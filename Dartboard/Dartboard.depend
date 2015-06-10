@@ -1,0 +1,7 @@
+# depslib dependency file v1.0
+1433916308 source:/home/dmartin6/OS/Dartboard/main.cpp
+	<iostream>
+	<time.h>
+	<math.h>
+	<stdlib.h>
+
