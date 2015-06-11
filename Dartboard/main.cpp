@@ -1,7 +1,9 @@
-#include <iostream>
 #include <time.h>
 #include <math.h>
 #include <stdlib.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <iostream>
 
 using namespace std;
 
@@ -9,8 +11,8 @@ class Dartboard
 {
     public:
         Dartboard();
-        void throwDart(float t);
-        float calculatePi(float hit, float total);
+        void throwDart(int t);
+        float calculatePi(float hit, int total);
         float piApprox;
         float x, y;
         float hits = 0;
@@ -23,8 +25,10 @@ Dartboard::Dartboard()
     //
 }
 
-void Dartboard::throwDart(float t)
+void Dartboard::throwDart(int t)
 {
+
+    cout << "Throwing darts" << endl;
     if(t <= 0)
         cout << "Error, cannot throw 0 darts" << endl;
 
@@ -45,43 +49,84 @@ void Dartboard::throwDart(float t)
     }
 }
 
-float Dartboard::calculatePi(float hit, float total)
+float Dartboard::calculatePi(float hit, int total)
 {
     piApprox = (4.0 * hit) / total;
 
     return piApprox;
 }
 
+struct thread_struct {
+    int throws;
+    Dartboard *d;
+};
+
+void *dartThread(void *arguments)
+{
+    struct thread_struct *args = (struct thread_struct*)arguments;
+    int throws = args->throws;
+//    throws = args->throws;
+    cout << "in thread" << endl;
+
+    args->d->throwDart(throws);
+
+    pthread_exit(NULL);
+}
+
+
 int main()
 {
-    float throws = 2500;
-    float h;
-    float m;
+    int rc;
+    int i;
+    int numThreads = 1;
+    pthread_t threads[numThreads];
+    pthread_attr_t attr;
+    void *status;
 
-    Dartboard * d = new Dartboard();
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
-    d->throwDart(throws);
+    Dartboard dartboard;
+    Dartboard *d = &dartboard;
 
-    h=d->hits;
-    m=d->misses;
+    int totalthrows = 2500;
+    struct thread_struct args;
+    args.throws = totalthrows;
+    args.d = d;
 
-    d->calculatePi(h, throws);
 
-    cout << "Number of threads: " << 1 << endl;
-    cout << "Number of throws: " << throws << endl;
-    cout << "Number of hits: " << h << endl;
-    cout << "Number of misses: " << m << endl;
-    cout << "Approximation of pi: " << d->piApprox << endl;
 
-    clock_t t1,t2;
-    t1=clock();
-    t2=clock();
-    float diff ((float)t2-(float)t1);
-    float seconds = diff / CLOCKS_PER_SEC;
+     for( i=0; i < numThreads; i++ ){
+      cout << "main() : creating thread, " << i << endl;
+      rc = pthread_create(&threads[i], NULL, &dartThread, (void *)&args );
+      if (rc)
+      {
+         cout << "Error:unable to create thread," << rc << endl;
+         exit(-1);
+      }
+   }
 
-    cout << "Running time: " << seconds << endl;
 
-    delete d;
+    pthread_attr_destroy(&attr);
+    for( i=0; i < numThreads; i++ )
+    {
+        rc = pthread_join(threads[i], &status);
+        if (rc)
+        {
+            cout << "Error:unable to join," << rc << endl;
+            exit(-1);
+        }
+        cout << "Main: completed thread id :" << i ;
+        cout << "  exiting with status :" << status << endl;
 
-    return 0;
+        cout << "Number of throws: " << totalthrows << endl;
+        cout << "Number of threads: " << numThreads << endl;
+        cout << "Number of hits: " << d->hits << endl;
+        cout << "Number of misses: " << d->misses << endl;
+        d->calculatePi(d->hits, totalthrows);
+        cout << "Estimate of pi: " << d->piApprox << endl;
+    }
+
+
+
 }
